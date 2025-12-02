@@ -33,6 +33,17 @@ const options = {
 
 const swaggerDoc = swaggerUtils.getSwaggerDoc();
 
+// Dynamically update basePath for ODA Component routing
+// When deployed as ODA Component, requests come with component name prefix
+if (process.env.RELEASE_NAME && process.env.COMPONENT_NAME) {
+  const componentPrefix = `/${process.env.RELEASE_NAME}-${process.env.COMPONENT_NAME}`;
+  const originalBasePath = swaggerDoc.basePath;
+  swaggerDoc.basePath = componentPrefix + swaggerDoc.basePath;
+  console.log(`Updated Swagger basePath from '${originalBasePath}' to '${swaggerDoc.basePath}'`);
+} else {
+  console.log(`Using default Swagger basePath: '${swaggerDoc.basePath}'`);
+}
+
 // Health check endpoints for Kubernetes probes
 app.use('/health', function(req, res) {
   res.writeHead(200, {'Content-Type': 'application/json'});
