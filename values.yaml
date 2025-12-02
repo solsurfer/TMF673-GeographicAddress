@@ -46,10 +46,10 @@ security:
 
 # MongoDB configuration - connecting to existing MongoDB in components namespace
 mongodb:
-  # Service name of existing MongoDB in components namespace
-  host: mongodb-service.components.svc.cluster.local
+  # Service name of existing MongoDB in components namespace (discovered via kubectl)
+  host: r1-mongodb
   port: 27017
-  database: tmf673
+  database: tmf
   # If authentication is required, specify the secret name
   # authSecret: mongodb-credentials
   # authSecretUserKey: username
