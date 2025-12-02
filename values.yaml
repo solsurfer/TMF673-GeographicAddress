@@ -58,10 +58,8 @@ mongodb:
 # Geographic Address API configuration
 api:
   # Docker image for the Geographic Address API
-  # TODO: Replace 'YOUR_GITHUB_USERNAME' with your actual GitHub username
-  # After pushing to ghcr.io, the image will be available at:
-  # ghcr.io/YOUR_GITHUB_USERNAME/geographicaddressapi:latest
-  image: ghcr.io/YOUR_GITHUB_USERNAME/geographicaddressapi:latest
+  # GitHub Container Registry image
+  image: ghcr.io/solsurfer/geographicaddressapi:latest
   imagePullPolicy: Always
   versionLabel: geographicaddressapi-4.0.1
 
