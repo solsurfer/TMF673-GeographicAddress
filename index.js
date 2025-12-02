@@ -33,16 +33,28 @@ const options = {
 
 const swaggerDoc = swaggerUtils.getSwaggerDoc();
 
-// Dynamically update basePath for ODA Component routing
-// When deployed as ODA Component, requests come with component name prefix
-if (process.env.RELEASE_NAME && process.env.COMPONENT_NAME) {
-  const componentPrefix = `/${process.env.RELEASE_NAME}-${process.env.COMPONENT_NAME}`;
-  const originalBasePath = swaggerDoc.basePath;
-  swaggerDoc.basePath = componentPrefix + swaggerDoc.basePath;
-  console.log(`Updated Swagger basePath from '${originalBasePath}' to '${swaggerDoc.basePath}'`);
-} else {
-  console.log(`Using default Swagger basePath: '${swaggerDoc.basePath}'`);
+// Get Component instance name from Environment variable and put it at start of API path
+let componentName = process.env.COMPONENT_NAME;
+if (!componentName) {
+  componentName = 'geographicaddress'; // for local testing, if not set
 }
+console.log('ComponentName: ' + componentName);
+
+// Update component name in swagger-ui-dist index.html
+fs.readFile(path.join(__dirname, './node_modules/swagger-ui-dist/index.html'), 'utf8', function (err, data) {
+  if (err) {
+    return console.log(err);
+  }
+  let result = data.replace(/url: \"/g, 'url: \"/' + componentName);
+  console.log('Updating Swagger UI URLs with component name: ' + componentName);
+  fs.writeFile(path.join(__dirname, './node_modules/swagger-ui-dist/index.html'), result, 'utf8', function (err) {
+    if (err) return console.log(err);
+  });
+});
+
+// Update basePath to include component name
+swaggerDoc.basePath = '/' + componentName + swaggerDoc.basePath;
+console.log('Updated Swagger basePath to: ' + swaggerDoc.basePath);
 
 // Health check endpoints for Kubernetes probes
 app.use('/health', function(req, res) {
@@ -86,13 +98,17 @@ swaggerTools.initializeMiddleware(swaggerDoc, function (middleware) {
 
   // Serve the Swagger documents and Swagger UI
   // using the more up-to-date swagger-ui-dist - not the default app.use(middleware.swaggerUi())
-  app.use(middleware.swaggerUi({ swaggerUiDir: path.join(__dirname, 'node_modules', 'swagger-ui-dist') }));
+  app.use(middleware.swaggerUi({
+    apiDocs: swaggerDoc.basePath + 'api-docs',
+    swaggerUi: swaggerDoc.basePath + 'docs',
+    swaggerUiDir: path.join(__dirname, 'node_modules', 'swagger-ui-dist')
+  }));
 
   mongoUtils.addAddressCollections()
   // Start the server
   http.createServer(app).listen(serverPort, function () {
     console.log('Your server is listening on port %d (http://localhost:%d)', serverPort, serverPort);
-    console.log('Swagger-ui is available on http://localhost:%d/docs', serverPort);
+    console.log('Swagger-ui is available on http://localhost:' + serverPort + swaggerDoc.basePath + 'docs', serverPort);
   });
 
 
