@@ -1,0 +1,31 @@
+# Node modules
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Helm packaging
+*.tgz
+charts/
+
+# Local development
+.env
+.env.local
+
+# Test coverage
+coverage/
+
+# Build artifacts
+dist/
+build/

@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-geographicaddressapi
+  labels:
+    {{- include "geographicaddress.labels" . | nindent 4 }}
+    app: {{ .Release.Name }}-{{ .Values.component.name }}
+    component: geographicaddressapi
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      impl: {{ .Release.Name }}-geographicaddressapi
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.component.name }}
+        impl: {{ .Release.Name }}-geographicaddressapi
+        version: {{ .Values.api.versionLabel }}
+        {{- include "geographicaddress.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: {{ .Release.Name }}-geographicaddressapi
+        image: {{ .Values.api.image }}
+        imagePullPolicy: {{ .Values.api.imagePullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.api.service.port }}
+          protocol: TCP
+        env:
+        - name: RELEASE_NAME
+          value: {{ .Release.Name }}
+        - name: COMPONENT_NAME
+          value: {{ .Release.Name }}-{{ .Values.component.name }}
+        - name: NODE_ENV
+          value: production
+        # MongoDB connection configuration
+        - name: MONGODB_HOST
+          value: {{ .Values.mongodb.host }}
+        - name: MONGODB_PORT
+          value: "{{ .Values.mongodb.port }}"
+        - name: MONGODB_DATABASE
+          value: {{ .Values.mongodb.database }}
+        {{- if .Values.mongodb.authSecret }}
+        - name: MONGODB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.mongodb.authSecret }}
+              key: {{ .Values.mongodb.authSecretUserKey | default "username" }}
+        - name: MONGODB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.mongodb.authSecret }}
+              key: {{ .Values.mongodb.authSecretPasswordKey | default "password" }}
+        {{- end }}
+        # Liveness probe - checks if container is alive
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.api.service.port }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        # Readiness probe - checks if container is ready to serve traffic
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: {{ .Values.api.service.port }}
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        # Startup probe - gives application time to start before other probes
+        startupProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.api.service.port }}
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 30
+        resources:
+          {{- toYaml .Values.api.resources | nindent 10 }}

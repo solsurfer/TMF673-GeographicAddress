@@ -1,0 +1,106 @@
+# Default values for geographicaddress.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+component:
+  # ODA Component metadata
+  id: TMFC029
+  name: geographicaddressmanagement
+  functionalBlock: CoreCommerce
+  publicationDate: 2025-01-01T00:00:00.000Z
+  version: "4.0.1"
+
+  # API Gateway policies
+  apipolicy:
+    apiKeyVerification:
+      enabled: false
+      location: "header"
+    rateLimit:
+      enabled: false
+      identifier: "IP"
+      limit: "100"
+      interval: "pm"
+    quota:
+      identifier: ""
+      limit: ""
+    OASValidation:
+      requestEnabled: false
+      responseEnabled: false
+      allowUnspecifiedHeaders: false
+      allowUnspecifiedQueryParams: false
+      allowUnspecifiedCookies: false
+    CORS:
+      enabled: true
+      allowCredentials: false
+      allowOrigins: "*"
+      handlePreflightRequests:
+        enabled: true
+        allowHeaders: "Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers"
+        allowMethods: "GET, POST, PATCH, DELETE"
+        maxAge: 36000
+    template: ""
+
+security:
+  # Canvas system role for security function
+  canvasSystemRole: canvasRole
+
+# MongoDB configuration - connecting to existing MongoDB in components namespace
+mongodb:
+  # Service name of existing MongoDB in components namespace
+  host: mongodb-service.components.svc.cluster.local
+  port: 27017
+  database: tmf673
+  # If authentication is required, specify the secret name
+  # authSecret: mongodb-credentials
+  # authSecretUserKey: username
+  # authSecretPasswordKey: password
+
+# Geographic Address API configuration
+api:
+  # Docker image for the Geographic Address API
+  # TODO: Replace 'YOUR_GITHUB_USERNAME' with your actual GitHub username
+  # After pushing to ghcr.io, the image will be available at:
+  # ghcr.io/YOUR_GITHUB_USERNAME/geographicaddressapi:latest
+  image: ghcr.io/YOUR_GITHUB_USERNAME/geographicaddressapi:latest
+  imagePullPolicy: Always
+  versionLabel: geographicaddressapi-4.0.1
+
+  # Replica count
+  replicas: 1
+
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 8080
+
+# Optional: Metrics API configuration
+metrics:
+  enabled: false
+  image: metricsapi:latest
+  versionLabel: metricsapi-1.0
+
+# Optional: Role management configuration
+# Choose between TMF672 (permissionspec) or TMF669 (partyrole)
+permissionspec:
+  enabled: false
+  image: permissionspecapi:latest
+  versionLabel: permissionspecapi-1.0
+
+partyrole:
+  enabled: false
+  image: partyroleapi:latest
+  versionLabel: partyroleapi-1.0
+
+# Canvas info (for ODA Canvas integration)
+canvasinfo:
+  host: info.canvas.svc.cluster.local
+  basepath: /

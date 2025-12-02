@@ -1,0 +1,211 @@
+
+'use strict';
+
+const util = require('util')
+const assert = require('assert');
+
+const queryToMongo = require('query-to-mongo');
+const querystring = require('querystring');
+
+const MongoClient = require('mongodb').MongoClient;
+
+const {getResponseType, getPayloadType, getTypeDefinition} = require('./swaggerUtils');
+
+var mongodb = null;
+var mongoClient = null;
+
+function connectHelper(callback) {
+  var config = require('../config.json');
+
+  // Support Kubernetes environment variables first, then fall back to config.json
+  var argv = require('minimist')(process.argv);
+  const dbhost = process.env.MONGODB_HOST || argv.dbhost || config.db_host;
+  const dbport = process.env.MONGODB_PORT || config.db_port;
+  const dbname = process.env.MONGODB_DATABASE || config.db_name || "tmf673";
+  const dbuser = process.env.MONGODB_USER;
+  const dbpassword = process.env.MONGODB_PASSWORD;
+
+  // Build MongoDB URL with optional authentication
+  let mongourl;
+  if (dbuser && dbpassword) {
+    mongourl = `mongodb://${dbuser}:${dbpassword}@${dbhost}:${dbport}/${dbname}?authSource=admin`;
+  } else {
+    mongourl = process.env.MONGO_URL || `mongodb://${dbhost}:${dbport}/${dbname}`;
+  }
+
+  console.log(`Connecting to MongoDB at ${dbhost}:${dbport}/${dbname}`);
+
+  MongoClient.connect(mongourl, { useNewUrlParser: true, useUnifiedTopology: true }, function (err, client) {
+
+      if (err) {
+        console.error('MongoDB connection error:', err.message);
+        mongodb = null;
+        mongoClient = null;
+        callback(err,null);
+      } else {
+        mongoClient = client;
+        mongodb = client.db(dbname);
+        console.log('MongoDB connected successfully');
+        callback(null,mongodb);
+      }
+    }
+  );
+};
+
+// Check if MongoDB is connected (for health checks)
+function isConnected() {
+  return mongodb !== null && mongoClient !== null && mongoClient.topology && mongoClient.topology.isConnected();
+};
+
+
+function getMongoQuery(req) {
+  var res;
+  if(req instanceof Object) {
+    res = queryToMongo(req._parsedUrl.query);
+  } else {
+    res = queryToMongo(querystring.parse(req));
+  }
+
+  if(res!==undefined && res.options!==undefined && res.options.fields!==undefined) {
+    res.options.fields.href = true;
+    res.options.fields.id = true;
+  }
+
+  //
+  // test for date-time in query and allow partial equality matching, e.g. ="2018-08-21"
+  //
+  try {
+    const requestType = getPayloadType(req);
+    const properties = Object.keys(res.criteria);
+
+    var typeDefinition = getTypeDefinition(requestType);
+    if(typeDefinition.properties!==undefined) {
+      typeDefinition = typeDefinition.properties;
+    }
+
+    properties.forEach(prop => {
+      var paramDef = typeDefinition[prop];
+      if(paramDef!==undefined && paramDef.type === "string" && paramDef.format === "date-time") {
+        const propVal = res.criteria[prop];
+        // equality test if not the value is an object
+        if(!(propVal instanceof Object)) {
+          if(!isNaN(Date.parse(propVal))) {
+            res.criteria[prop] = {$regex: '^' + propVal + '.*' };
+          }
+        }
+      }
+    });
+  }
+  catch(err) {
+    // ignore for now
+  }
+
+  res.options.projection = res.options.fields;
+  delete res.options.fields;
+
+  return(res);
+
+};
+
+function quotedString(s) {
+  return s;
+};
+
+function connectDb(callback) {
+  if(mongodb) {
+      mongodb.stats(function(err, stats) {
+        if(stats != null) {
+          callback(null,mongodb);
+        } else {
+          connectHelper(callback);
+        }
+      });
+  } else {
+    connectHelper(callback);
+  }
+};
+
+function connect() {
+  return new Promise(function(resolve,reject) {
+      connectDb(function(err,db) {
+        if(err!=null || db==null) {
+          reject(err);
+        } else {
+          resolve(db);
+        };
+      });
+    });
+};
+
+function sendDoc(res,code,doc) {
+  // delete internal mongo _id from all documents
+  if(Array.isArray(doc)) {
+    // remove _id from all documents
+    doc.forEach(x => {
+      delete x._id;
+    });
+  } else {
+    delete doc._id;
+  }
+
+  if(doc.href) {
+    res.setHeader('Location',  doc.href);
+  }
+
+  res.statusCode = code;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(doc));
+}
+
+async function addAddressCollections(){
+  let testGeoAddressDoc = {
+    id: "9090",
+    href: "https://host:port/location/geographicAddress/9090",
+    streetNr: "225",
+    streetName: "strathmore",
+    streetType: "terrace",
+    postcode: "5004",
+    locality: "Brighton",
+    city: "Brighton",
+    stateOrProvince: "SA",
+    country: "Australia",
+    geographicSubAddress: []
+  }
+
+  let testGeoSubAddressDoc = {
+    id: "1090",
+    href: "https://host:port/location/geographicAddress/9090/geographicSubAddress...",
+    levelNumber: "20",
+    levelType: "Ground",
+    privateStreetNumber: "267",
+    privateStreetName: "street",
+    subAddressType: "subunit"
+  }
+  
+  try{
+    let mongoConnection = await connect()
+    let geoAddress = mongoConnection.collection("GeographicAddress")
+    let geoSubAddress = mongoConnection.collection("GeographicSubAddress")
+
+
+    let geoAddresses = await geoAddress.countDocuments({})
+    let geoSubAddresses = await geoSubAddress.countDocuments({})
+
+    if (geoAddresses < 1){
+      geoAddress.insertOne(testGeoAddressDoc)
+    }
+
+    if (geoSubAddresses < 1){
+      geoSubAddress.insertOne(testGeoSubAddressDoc)
+    }
+  }
+  catch(Error) {
+      console.log(Error)
+  }
+}
+
+
+
+module.exports = { connect, connectDb, getMongoQuery, sendDoc, addAddressCollections, isConnected };
+
+

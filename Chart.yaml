@@ -1,0 +1,6 @@
+apiVersion: v2
+appVersion: 4.0.1
+description: TMF673 Geographic Address Management ODA Component
+name: geographicaddress
+type: application
+version: 1.0.0

@@ -1,0 +1,39 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named {{ .Release.Name }}.
+
+To learn more about the release, try:
+
+  $ helm status {{ .Release.Name }} -n {{ .Release.Namespace }}
+  $ helm get all {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+Geographic Address Management API (TMF673) has been deployed.
+
+Service Details:
+  Name: {{ .Release.Name }}-geographicaddressapi
+  Type: {{ .Values.api.service.type }}
+  Port: {{ .Values.api.service.port }}
+
+To access the API within the cluster:
+  http://{{ .Release.Name }}-geographicaddressapi:{{ .Values.api.service.port }}
+
+API Endpoints:
+  Base Path: /tmf-api/geographicAddressManagement/v4/
+  Swagger UI: /docs/
+  Health Check: /health
+  Readiness Check: /ready
+
+MongoDB Configuration:
+  Host: {{ .Values.mongodb.host }}
+  Port: {{ .Values.mongodb.port }}
+  Database: {{ .Values.mongodb.database }}
+
+To check the deployment status:
+  $ kubectl get pods -l app={{ .Release.Name }}-{{ .Values.component.name }} -n {{ .Release.Namespace }}
+
+To view logs:
+  $ kubectl logs -l impl={{ .Release.Name }}-geographicaddressapi -n {{ .Release.Namespace }}
+
+To test the API (from within cluster):
+  $ kubectl run curl-test --image=curlimages/curl -i --rm --restart=Never -- \
+    curl http://{{ .Release.Name }}-geographicaddressapi:{{ .Values.api.service.port }}/health
