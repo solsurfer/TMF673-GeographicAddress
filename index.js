@@ -40,21 +40,27 @@ if (!componentName) {
 }
 console.log('ComponentName: ' + componentName);
 
-// Update component name in swagger-ui-dist index.html
+// Update basePath to include component name
+swaggerDoc.basePath = '/' + componentName + swaggerDoc.basePath;
+console.log('Updated Swagger basePath to: ' + swaggerDoc.basePath);
+
+// Remove hardcoded host so Swagger UI uses the current page's hostname
+// This allows the API to work through different hostnames (public IP, domain, etc.)
+delete swaggerDoc.host;
+console.log('Removed hardcoded host - Swagger UI will use current page hostname');
+
+// Update swagger-ui-dist index.html with FULL basePath for api-docs
 fs.readFile(path.join(__dirname, './node_modules/swagger-ui-dist/index.html'), 'utf8', function (err, data) {
   if (err) {
     return console.log(err);
   }
-  let result = data.replace(/url: \"/g, 'url: \"/' + componentName);
-  console.log('Updating Swagger UI URLs with component name: ' + componentName);
+  // Replace the url with the full basePath + api-docs
+  let result = data.replace(/url: "https:\/\/petstore\.swagger\.io\/v2\/swagger\.json"/g, 'url: "' + swaggerDoc.basePath + 'api-docs"');
+  console.log('Updated Swagger UI to fetch API docs from: ' + swaggerDoc.basePath + 'api-docs');
   fs.writeFile(path.join(__dirname, './node_modules/swagger-ui-dist/index.html'), result, 'utf8', function (err) {
     if (err) return console.log(err);
   });
 });
-
-// Update basePath to include component name
-swaggerDoc.basePath = '/' + componentName + swaggerDoc.basePath;
-console.log('Updated Swagger basePath to: ' + swaggerDoc.basePath);
 
 // Health check endpoints for Kubernetes probes
 app.use('/health', function(req, res) {
