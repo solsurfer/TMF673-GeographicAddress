@@ -55,7 +55,7 @@ fs.readFile(path.join(__dirname, './node_modules/swagger-ui-dist/index.html'), '
     return console.log(err);
   }
   // Replace the url with the full basePath + api-docs
-  let result = data.replace(/url: "https:\/\/petstore\.swagger\.io\/v2\/swagger\.json"/g, 'url: "' + swaggerDoc.basePath + 'api-docs"');
+  let result = data.replace(/url: "\/api-docs"/g, 'url: "' + swaggerDoc.basePath + 'api-docs"');
   console.log('Updated Swagger UI to fetch API docs from: ' + swaggerDoc.basePath + 'api-docs');
   fs.writeFile(path.join(__dirname, './node_modules/swagger-ui-dist/index.html'), result, 'utf8', function (err) {
     if (err) return console.log(err);
